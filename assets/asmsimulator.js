@@ -1,5 +1,7 @@
 var app = angular.module('ASMSimulator', []);
 ;app.service('assembler', ['opcodes', function (opcodes) {
+    function isNotEmpty(el) {return el.length !== 0;}
+    
     return {
         go: function (input) {
             // Use https://www.debuggex.com/
@@ -205,17 +207,26 @@ var app = angular.module('ASMSimulator', []);
 
                             switch (instr) {
                                 case 'DB':
-                                    p1 = getValue(match[op1_group]);
-
-                                    if (p1.type === "number")
-                                        code.push(p1.value);
-                                    else if (p1.type === "numbers")
-                                        for (var j = 0, k = p1.value.length; j < k; j++) {
-                                            code.push(p1.value[j]);
-                                        }
-                                    else
-                                        throw "DB does not support this operand";
-
+                                    var dbline = lines[i];
+                                    var dbtemp = dbline.indexOf(":");
+                                    var dbtemp2 = dbline.indexOf(";");
+                                    dbline = dbline.substring((dbtemp == -1) ? 0 : (dbtemp+1), (dbtemp2 == -1) ? (dbline.length-1) : dbtemp2);
+                                    dbline.trim();
+                                    var dblinesplit = dbline.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                                    var dbcount = 0;
+                                    while(dblinesplit[dbcount] !== undefined){
+                                        p1 = getValue(dblinesplit[dbcount]);
+                                        
+                                        if (p1.type === "number")
+                                            code.push(p1.value);
+                                        else if (p1.type === "numbers")
+                                            for (var j = 0, k = p1.value.length; j < k; j++) {
+                                                code.push(p1.value[j]);
+                                            }
+                                        else
+                                            throw "DB does not support this operand";
+                                        ++dbcount;
+                                    }
                                     break;
                                 case 'HLT':
                                     checkNoExtraArg('HLT', match[op1_group]);
@@ -1347,7 +1358,19 @@ var app = angular.module('ASMSimulator', []);
 
     return opcodes;
 }]);
-;app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'assembler', function ($document, $scope, $timeout, cpu, memory, assembler) {
+;app.directive('ngRightClick', function($parse) {
+    return function(scope, element, attrs) {
+        var fn = $parse(attrs.ngRightClick);
+        element.bind('contextmenu', function(event) {
+            scope.$apply(function() {
+                event.preventDefault();
+                fn(scope, {$event:event});
+            });
+        });
+    };
+});
+
+app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'assembler', function ($document, $scope, $timeout, cpu, memory, assembler) {
     $scope.memory = memory;
     $scope.cpu = cpu;
     $scope.error = '';
@@ -1361,12 +1384,124 @@ var app = angular.module('ASMSimulator', []);
     $scope.speeds = [{speed: 1, desc: "1 HZ"},
                      {speed: 4, desc: "4 HZ"},
                      {speed: 8, desc: "8 HZ"},
-                     {speed: 16, desc: "16 HZ"}];
-    $scope.speed = 4;
+                     {speed: 16, desc: "16 HZ"},
+                     {speed: 32, desc: "32 HZ"},
+                     {speed: 64, desc: "64 HZ"}];
+    $scope.speed = 8;
     $scope.outputStartIndex = 232;
 
-    $scope.code = "; Simple example\n; Writes Hello World to the output\n\n	JMP start\nhello: DB \"Hello World!\" ; Variable\n       DB 0	; String terminator\n\nstart:\n	MOV C, hello    ; Point to var \n	MOV D, 232	; Point to output\n	CALL print\n        HLT             ; Stop execution\n\nprint:			; print(C:*from, D:*to)\n	PUSH A\n	PUSH B\n	MOV B, 0\n.loop:\n	MOV A, [C]	; Get char from var\n	MOV [D], A	; Write to output\n	INC C\n	INC D  \n	CMP B, [C]	; Check if end\n	JNZ .loop	; jump if not\n\n	POP B\n	POP A\n	RET";
+    $scope.code = "; Simple example\n; Writes Hello World to the output\n\n	JMP start\nhello: DB \"Hello World!\", 0 ; Variable\n\nstart:\n	MOV C, hello    ; Point to var \n	MOV D, 232	; Point to output\n	CALL print\n        HLT             ; Stop execution\n\nprint:			; print(C:*from, D:*to)\n	PUSH A\n	PUSH B\n	MOV B, 0\n.loop:\n	MOV A, [C]	; Get char from var\n	MOV [D], A	; Write to output\n	INC C\n	INC D\n	CMP B, [C]	; Check if end\n	JNZ .loop	; jump if not\n\n	POP B\n	POP A\n	RET";
+    
+    function toHexString(byteArray) {
+        return Array.from(byteArray, function(byte) {
+            return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+        }).join('');
+    }
+    
+    function hexStringToByte(str) {
+        if (!str) {
+            return new Uint8Array();
+        }
 
+        var a = [];
+        for (var i = 0, len = str.length; i < len; i += 2) {
+            a.push(parseInt(str.substr(i,2),16));
+        }
+
+        return new Uint8Array(a);
+    }
+    
+    function hexStringToWord(str) {
+        if (!str) {
+            return new Uint16Array();
+        }
+
+        var a = [];
+        for (var i = 0, len = str.length; i < len; i += 4) {
+            a.push(parseInt(str.substr(i,4),16));
+        }
+
+        return new Uint16Array(a);
+    }
+    
+    $scope.changeRegister = function (regIndex) {
+        var value = prompt("Please type in a hex value (1 for TRUE / 0 for FALSE)");
+        if(value !== null && value !== ""){
+            var val = parseInt(value, 16);
+            if(!isNaN(val)) {
+                if((val >= 0) && (val <= 0xFF)){
+                    if(regIndex == 0x80){
+                        cpu.ip = val;
+                    } else if(regIndex == 0x81){
+                        cpu.sp = val;
+                    } else if(regIndex == 0x82){
+                        cpu.zero = (val >= 1);
+                    } else if(regIndex == 0x83){
+                        cpu.carry = (val >= 1);
+                    } else if(regIndex == 0x84){
+                        cpu.fault = (val >= 1);
+                    } else {
+                        cpu.gpr[regIndex] = val;
+                    }
+                    $scope.$apply();
+                }
+            }
+        }
+        return false;
+    };
+    
+    $scope.changeMemory = function (memIndex) {
+        var value = prompt("Please type in a hex value");
+        if(value !== null && value !== ""){
+            var val = parseInt(value, 16);
+            if(!isNaN(val)) {
+                if((val >= 0) && (val <= 0xFF)){
+                    $scope.memory.data[memIndex] = val;
+                    //$scope.$apply();
+                }
+            }
+        }
+        return false;
+    };
+    
+    $scope.save = function () {
+        var hexString = toHexString($scope.memory.data);
+        for(var i = 0; i < 256; ++i) {
+            hexString = hexString + ('000' + ($scope.mapping[i] & 0xFFFF).toString(16)).slice(-4);
+        }
+        hexString = hexString + $scope.code;
+        var uriContent = "data:application/octet-stream," + encodeURIComponent(hexString);
+        var newWindow = window.open(uriContent, 'neuesDokument');
+    };
+    
+    $scope.load = function (files) {
+        var f = files[0];
+        if(f){
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                
+                $scope.reset();
+                var contents = e.target.result;
+                var hexString = contents.substr(0, 512);
+                var hexArr = hexStringToByte(hexString);
+                var mappingString = contents.substr(512, 1536);
+                var mappingArr = hexStringToWord(mappingString);
+                if($scope.mapping === undefined) $scope.mapping = {};
+                for(var i = 0; i < 256; ++i){
+                    $scope.memory.data[i] = hexArr[i];
+                    $scope.mapping[i] = mappingArr[i];
+                }
+                $scope.code = contents.substr(1536, f.size-1536);
+                $scope.$apply();
+                //$document[0].getElementById('sourceCode').value = $scope.code;
+                //$scope.assemble();
+            };
+            reader.readAsText(f);
+        } else {
+            alert("No file found");
+        }
+    };
+    
     $scope.reset = function () {
         cpu.reset();
         memory.reset();
@@ -1375,7 +1510,7 @@ var app = angular.module('ASMSimulator', []);
     };
 
     $scope.executeStep = function () {
-        if (!$scope.checkPrgrmLoaded()) {
+        if (!$scope.checkPrgrmLoaded() && document.getElementById("autoAssembleCheckBox").checked) {
             $scope.assemble();
         }
 
@@ -1397,7 +1532,7 @@ var app = angular.module('ASMSimulator', []);
 
     var runner;
     $scope.run = function () {
-        if (!$scope.checkPrgrmLoaded()) {
+        if (!$scope.checkPrgrmLoaded() && document.getElementById("autoAssembleCheckBox").checked) {
             $scope.assemble();
         }
 
