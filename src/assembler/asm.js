@@ -1,6 +1,4 @@
 app.service('assembler', ['opcodes', function (opcodes) {
-    function isNotEmpty(el) {return el.length !== 0;}
-    
     return {
         go: function (input) {
             // Use https://www.debuggex.com/
@@ -206,26 +204,17 @@ app.service('assembler', ['opcodes', function (opcodes) {
 
                             switch (instr) {
                                 case 'DB':
-                                    var dbline = lines[i];
-                                    var dbtemp = dbline.indexOf(":");
-                                    var dbtemp2 = dbline.indexOf(";");
-                                    dbline = dbline.substring((dbtemp == -1) ? 0 : (dbtemp+1), (dbtemp2 == -1) ? (dbline.length) : dbtemp2);
-                                    dbline.trim();
-                                    var dblinesplit = dbline.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                                    var dbcount = 0;
-                                    while(dblinesplit[dbcount] !== undefined){
-                                        p1 = getValue(dblinesplit[dbcount]);
-                                        
-                                        if (p1.type === "number")
-                                            code.push(p1.value);
-                                        else if (p1.type === "numbers")
-                                            for (var j = 0, k = p1.value.length; j < k; j++) {
-                                                code.push(p1.value[j]);
-                                            }
-                                        else
-                                            throw "DB does not support this operand";
-                                        ++dbcount;
-                                    }
+                                    p1 = getValue(match[op1_group]);
+
+                                    if (p1.type === "number")
+                                        code.push(p1.value);
+                                    else if (p1.type === "numbers")
+                                        for (var j = 0, k = p1.value.length; j < k; j++) {
+                                            code.push(p1.value[j]);
+                                        }
+                                    else
+                                        throw "DB does not support this operand";
+
                                     break;
                                 case 'HLT':
                                     checkNoExtraArg('HLT', match[op1_group]);
