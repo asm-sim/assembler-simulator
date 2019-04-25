@@ -1,5 +1,7 @@
 var app = angular.module('ASMSimulator', []);
 ;app.service('assembler', ['opcodes', function (opcodes) {
+    function isNotEmpty(el) {return el.length !== 0;}
+    
     return {
         go: function (input) {
             // Use https://www.debuggex.com/
@@ -205,17 +207,25 @@ var app = angular.module('ASMSimulator', []);
 
                             switch (instr) {
                                 case 'DB':
-                                    p1 = getValue(match[op1_group]);
-
-                                    if (p1.type === "number")
-                                        code.push(p1.value);
-                                    else if (p1.type === "numbers")
-                                        for (var j = 0, k = p1.value.length; j < k; j++) {
-                                            code.push(p1.value[j]);
-                                        }
-                                    else
-                                        throw "DB does not support this operand";
-
+                                    var dbline = lines[i];
+                                    var dbtemp = dbline.indexOf(":");
+                                    var dbtemp2 = dbline.indexOf(";");
+                                    dbline = dbline.substring((dbtemp == -1) ? 0 : (dbtemp+1), (dbtemp2 == -1) ? (dbline.length) : dbtemp2);
+                                    var dblinesplit = dbline.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                                    var dbcount = 0;
+                                    while(dblinesplit[dbcount] !== undefined){
+                                        p1 = getValue(dblinesplit[dbcount]);
+                                        
+                                        if (p1.type === "number")
+                                            code.push(p1.value);
+                                        else if (p1.type === "numbers")
+                                            for (var j = 0, k = p1.value.length; j < k; j++) {
+                                                code.push(p1.value[j]);
+                                            }
+                                        else
+                                            throw "DB does not support this operand";
+                                        ++dbcount;
+                                    }
                                     break;
                                 case 'HLT':
                                     checkNoExtraArg('HLT', match[op1_group]);
@@ -1361,8 +1371,10 @@ var app = angular.module('ASMSimulator', []);
     $scope.speeds = [{speed: 1, desc: "1 HZ"},
                      {speed: 4, desc: "4 HZ"},
                      {speed: 8, desc: "8 HZ"},
-                     {speed: 16, desc: "16 HZ"}];
-    $scope.speed = 4;
+                     {speed: 16, desc: "16 HZ"},
+                     {speed: 32, desc: "32 HZ"},
+                     {speed: 64, desc: "64 HZ"}];
+    $scope.speed = 8;
     $scope.outputStartIndex = 232;
 
     $scope.code = "; Simple example\n; Writes Hello World to the output\n\n	JMP start\nhello: DB \"Hello World!\" ; Variable\n       DB 0	; String terminator\n\nstart:\n	MOV C, hello    ; Point to var \n	MOV D, 232	; Point to output\n	CALL print\n        HLT             ; Stop execution\n\nprint:			; print(C:*from, D:*to)\n	PUSH A\n	PUSH B\n	MOV B, 0\n.loop:\n	MOV A, [C]	; Get char from var\n	MOV [D], A	; Write to output\n	INC C\n	INC D  \n	CMP B, [C]	; Check if end\n	JNZ .loop	; jump if not\n\n	POP B\n	POP A\n	RET";
