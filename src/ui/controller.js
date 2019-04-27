@@ -1,3 +1,15 @@
+app.directive('ngRightClick', function($parse) {
+    return function(scope, element, attrs) {
+        var fn = $parse(attrs.ngRightClick);
+        element.bind('contextmenu', function(event) {
+            scope.$apply(function() {
+                event.preventDefault();
+                fn(scope, {$event:event});
+            });
+        });
+    };
+});
+
 app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'assembler', function ($document, $scope, $timeout, cpu, memory, assembler) {
     $scope.memory = memory;
     $scope.cpu = cpu;
@@ -18,7 +30,7 @@ app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'ass
     $scope.speed = 8;
     $scope.outputStartIndex = 232;
 
-    $scope.code = "; Simple example\n; Writes Hello World to the output\n\n	JMP start\nhello: DB \"Hello World!\", 0 ; Variable\n\nstart:\n	MOV C, hello    ; Point to var \n	MOV D, 232	; Point to output\n	CALL print\n        HLT             ; Stop execution\n\nprint:			; print(C:*from, D:*to)\n	PUSH A\n	PUSH B\n	MOV B, 0\n.loop:\n	MOV A, [C]	; Get char from var\n	MOV [D], A	; Write to output\n	INC C\n	INC D  \n	CMP B, [C]	; Check if end\n	JNZ .loop	; jump if not\n\n	POP B\n	POP A\n	RET";
+    $scope.code = "; Simple example\n; Writes Hello World to the output\n\n	JMP start\nhello: DB \"Hello World!\", 0 ; Variable\n\nstart:\n	MOV C, hello    ; Point to var \n	MOV D, 232	; Point to output\n	CALL print\n        HLT             ; Stop execution\n\nprint:			; print(C:*from, D:*to)\n	PUSH A\n	PUSH B\n	MOV B, 0\n.loop:\n	MOV A, [C]	; Get char from var\n	MOV [D], A	; Write to output\n	INC C\n	INC D\n	CMP B, [C]	; Check if end\n	JNZ .loop	; jump if not\n\n	POP B\n	POP A\n	RET";
     
     function toHexString(byteArray) {
         return Array.from(byteArray, function(byte) {
@@ -52,6 +64,46 @@ app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'ass
         return new Uint16Array(a);
     }
     
+    $scope.changeRegister = function (regIndex) {
+        var value = prompt("Please type in a hex value (1 for TRUE / 0 for FALSE)");
+        if(value !== null && value !== ""){
+            var val = parseInt(value, 16);
+            if(!isNaN(val)) {
+                if((val >= 0) && (val <= 0xFF)){
+                    if(regIndex == 0x80){
+                        cpu.ip = val;
+                    } else if(regIndex == 0x81){
+                        cpu.sp = val;
+                    } else if(regIndex == 0x82){
+                        cpu.zero = (val >= 1);
+                    } else if(regIndex == 0x83){
+                        cpu.carry = (val >= 1);
+                    } else if(regIndex == 0x84){
+                        cpu.fault = (val >= 1);
+                    } else {
+                        cpu.gpr[regIndex] = val;
+                    }
+                    $scope.$apply();
+                }
+            }
+        }
+        return false;
+    };
+    
+    $scope.changeMemory = function (memIndex) {
+        var value = prompt("Please type in a hex value");
+        if(value !== null && value !== ""){
+            var val = parseInt(value, 16);
+            if(!isNaN(val)) {
+                if((val >= 0) && (val <= 0xFF)){
+                    $scope.memory.data[memIndex] = val;
+                    //$scope.$apply();
+                }
+            }
+        }
+        return false;
+    };
+    
     $scope.save = function () {
         var hexString = toHexString($scope.memory.data);
         for(var i = 0; i < 256; ++i) {
@@ -81,6 +133,8 @@ app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'ass
                 }
                 $scope.code = contents.substr(1536, f.size-1536);
                 $scope.$apply();
+                //$document[0].getElementById('sourceCode').value = $scope.code;
+                //$scope.assemble();
             };
             reader.readAsText(f);
         } else {

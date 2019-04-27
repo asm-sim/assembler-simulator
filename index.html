@@ -85,15 +85,15 @@
                             </thead>
                             <tbody>
                                 <tr style="text-align:center;" class="source-code">
-                                    <td><div style="margin:auto;" ng-class="displayA && 'marker marker-a'"><small>{{ cpu.gpr[0] | number:displayHex }}</small></div></td>
-                                    <td><div style="margin:auto;" ng-class="displayB && 'marker marker-b'"><small>{{ cpu.gpr[1] | number:displayHex }}</small></div></td>
-                                    <td><div style="margin:auto;" ng-class="displayC && 'marker marker-c'"><small>{{ cpu.gpr[2] | number:displayHex }}</small></div></td>
-                                    <td><div style="margin:auto;" ng-class="displayD && 'marker marker-d'"><small>{{ cpu.gpr[3] | number:displayHex }}</small></div></td>
-                                    <td><div style="margin:auto;" class="marker marker-ip"><small>{{ cpu.ip | number:displayHex }}</small></div></td>
-                                    <td><div style="margin:auto;" class="marker marker-sp"><small>{{ cpu.sp | number:displayHex }}</small></div></td>
-                                    <td><small>{{ cpu.zero | flag }}</small></td>
-                                    <td><small>{{ cpu.carry | flag }}</small></td>
-                                    <td><small>{{ cpu.fault | flag }}</small></td>
+                                    <td><div style="margin:auto;" ng-class="displayA && 'marker marker-a'" oncontextmenu="angular.element(this).scope().changeRegister(0);return false;"><small>{{ cpu.gpr[0] | number:displayHex }}</small></div></td>
+                                    <td><div style="margin:auto;" ng-class="displayB && 'marker marker-b'" oncontextmenu="angular.element(this).scope().changeRegister(1);return false;"><small>{{ cpu.gpr[1] | number:displayHex }}</small></div></td>
+                                    <td><div style="margin:auto;" ng-class="displayC && 'marker marker-c'" oncontextmenu="angular.element(this).scope().changeRegister(2);return false;"><small>{{ cpu.gpr[2] | number:displayHex }}</small></div></td>
+                                    <td><div style="margin:auto;" ng-class="displayD && 'marker marker-d'" oncontextmenu="angular.element(this).scope().changeRegister(3);return false;"><small>{{ cpu.gpr[3] | number:displayHex }}</small></div></td>
+                                    <td><div style="margin:auto;" class="marker marker-ip" oncontextmenu="angular.element(this).scope().changeRegister(128);return false;"><small>{{ cpu.ip | number:displayHex }}</small></div></td>
+                                    <td><div style="margin:auto;" class="marker marker-sp" oncontextmenu="angular.element(this).scope().changeRegister(129);return false;"><small>{{ cpu.sp | number:displayHex }}</small></div></td>
+                                    <td oncontextmenu="angular.element(this).scope().changeRegister(130);return false;"><small>{{ cpu.zero | flag }}</small></td>
+                                    <td oncontextmenu="angular.element(this).scope().changeRegister(131);return false;"><small>{{ cpu.carry | flag }}</small></td>
+                                    <td oncontextmenu="angular.element(this).scope().changeRegister(132);return false;"><small>{{ cpu.fault | flag }}</small></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -102,7 +102,7 @@
                             <div class="memory-block"
                                  ng-repeat="m in memory.data track by $index"
                                  ng-class="getMemoryCellCss($index)">
-                                 <div ng-class="getMemoryInnerCellCss($index)" ng-switch="isInstruction($index)">
+                                 <div ng-class="getMemoryInnerCellCss($index)" ng-switch="isInstruction($index)" ng-right-click="changeMemory($index)">
                                      <small ng-switch-default>{{ m | number:displayHex }}</small>
                                      <a ng-switch-when="true" ng-click="jumpToLine($index)">
                                          <small>{{ m | number:displayHex }}</small>
