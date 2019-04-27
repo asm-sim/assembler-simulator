@@ -96,7 +96,7 @@ app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'ass
     };
 
     $scope.executeStep = function () {
-        if (!$scope.checkPrgrmLoaded()) {
+        if (!$scope.checkPrgrmLoaded() && document.getElementById("autoAssembleCheckBox").checked) {
             $scope.assemble();
         }
 
@@ -118,7 +118,7 @@ app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'ass
 
     var runner;
     $scope.run = function () {
-        if (!$scope.checkPrgrmLoaded()) {
+        if (!$scope.checkPrgrmLoaded() && document.getElementById("autoAssembleCheckBox").checked) {
             $scope.assemble();
         }
 

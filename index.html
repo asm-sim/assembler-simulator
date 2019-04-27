@@ -19,6 +19,7 @@
                     <button type="button" class="btn btn-default navbar-btn" ng-click="executeStep()" ng-disabled="isRunning"><span class="glyphicon glyphicon-forward"></span> Step</button>
                 </div>
                 <button type="button" class="btn btn-default navbar-btn" ng-click="reset()">Reset</button>
+                <input type="checkbox" id="autoAssembleCheckBox" checked>Auto Assemble</input>
                 <button type="button" class="btn btn-default navbar-btn" ng-click="save()">Save</button>
                 <input style="display: inline;" type="file" id="fileLoadInput" class="btn btn-default navbar-btn" onchange="angular.element(this).scope().load(this.files)" />
             </div>
