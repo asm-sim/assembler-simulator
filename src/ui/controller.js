@@ -19,7 +19,75 @@ app.controller('Ctrl', ['$document', '$scope', '$timeout', 'cpu', 'memory', 'ass
     $scope.outputStartIndex = 232;
 
     $scope.code = "; Simple example\n; Writes Hello World to the output\n\n	JMP start\nhello: DB \"Hello World!\", 0 ; Variable\n\nstart:\n	MOV C, hello    ; Point to var \n	MOV D, 232	; Point to output\n	CALL print\n        HLT             ; Stop execution\n\nprint:			; print(C:*from, D:*to)\n	PUSH A\n	PUSH B\n	MOV B, 0\n.loop:\n	MOV A, [C]	; Get char from var\n	MOV [D], A	; Write to output\n	INC C\n	INC D  \n	CMP B, [C]	; Check if end\n	JNZ .loop	; jump if not\n\n	POP B\n	POP A\n	RET";
+    
+    function toHexString(byteArray) {
+        return Array.from(byteArray, function(byte) {
+            return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+        }).join('');
+    }
+    
+    function hexStringToByte(str) {
+        if (!str) {
+            return new Uint8Array();
+        }
 
+        var a = [];
+        for (var i = 0, len = str.length; i < len; i += 2) {
+            a.push(parseInt(str.substr(i,2),16));
+        }
+
+        return new Uint8Array(a);
+    }
+    
+    function hexStringToWord(str) {
+        if (!str) {
+            return new Uint16Array();
+        }
+
+        var a = [];
+        for (var i = 0, len = str.length; i < len; i += 4) {
+            a.push(parseInt(str.substr(i,4),16));
+        }
+
+        return new Uint16Array(a);
+    }
+    
+    $scope.save = function () {
+        var hexString = toHexString($scope.memory.data);
+        for(var i = 0; i < 256; ++i) {
+            hexString = hexString + ('000' + ($scope.mapping[i] & 0xFFFF).toString(16)).slice(-4);
+        }
+        hexString = hexString + $scope.code;
+        var uriContent = "data:application/octet-stream," + encodeURIComponent(hexString);
+        var newWindow = window.open(uriContent, 'neuesDokument');
+    };
+    
+    $scope.load = function (files) {
+        var f = files[0];
+        if(f){
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                
+                $scope.reset();
+                var contents = e.target.result;
+                var hexString = contents.substr(0, 512);
+                var hexArr = hexStringToByte(hexString);
+                var mappingString = contents.substr(512, 1536);
+                var mappingArr = hexStringToWord(mappingString);
+                if($scope.mapping === undefined) $scope.mapping = {};
+                for(var i = 0; i < 256; ++i){
+                    $scope.memory.data[i] = hexArr[i];
+                    $scope.mapping[i] = mappingArr[i];
+                }
+                $scope.code = contents.substr(1536, f.size-1536);
+                $scope.$apply();
+            };
+            reader.readAsText(f);
+        } else {
+            alert("No file found");
+        }
+    };
+    
     $scope.reset = function () {
         cpu.reset();
         memory.reset();
